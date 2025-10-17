@@ -1,0 +1,13 @@
+# Terraform state files
+*.tfstate
+*.tfstate.*
+
+# Terraform lock and config
+.terraform/
+.terraform.lock.hcl
+
+# Sensitive private key files
+*.pem
+
+# Crash logs
+crash.log
