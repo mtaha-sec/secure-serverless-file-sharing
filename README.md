@@ -46,7 +46,7 @@ A **secure serverless file sharing application** built entirely on AWS, designed
 
 ## Usage
 
-### 1. Authenticate & Retrieve JWT Token
+### 1. Authenticate & Retrieve JWT Token & HTTP Methods
 
 ```bash
 #this command returns an IdToken, which you will use to authorize API requests.
