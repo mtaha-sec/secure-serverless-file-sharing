@@ -44,48 +44,71 @@ A **secure serverless file sharing application** built entirely on AWS, designed
 
 ---
 
-# ----------------------------
-# Authenticate & Retrieve JWT Token
-# ----------------------------
-# Usage: make auth
-auth:
-	@echo "Retrieving IdToken from Cognito..."
-	$(eval IDTOKEN=$(shell aws cognito-idp initiate-auth \
-		--auth-flow USER_PASSWORD_AUTH \
-		--client-id $(COGNITO_CLIENT_ID) \
-		--auth-parameters USERNAME=$(USERNAME),PASSWORD=$(PASSWORD) \
-		--query "AuthenticationResult.IdToken" \
-		--output text))
-	@echo "Token: $(IDTOKEN)"
+## Usage
+
+### 1. Authenticate & Retrieve JWT Token
+this command returns an IdToken, which you will use to authorize API requests.
+```bash
+aws cognito-idp initiate-auth \
+  --auth-flow USER_PASSWORD_AUTH \
+  --client-id <COGNITO_CLIENT_ID> \
+  --auth-parameters USERNAME=<your-username>,PASSWORD=<your-password> \
+  --query "AuthenticationResult.IdToken" \
+  --output text
+
+# =====================================================
+# Secure Serverless File Sharing - API Commands
+# =====================================================
 
 # ----------------------------
 # Upload a File (PUT)
 # ----------------------------
-# Usage: make upload
+# Usage:
+#   Upload a local file to the S3 bucket via API Gateway
+# Requirements:
+#   - Replace <API_ENDPOINT> with your API endpoint
+#   - Replace <filename> with the desired S3 object name
+#   - Replace <IdToken> with your Cognito JWT token
 upload:
-	@echo "Uploading $(LOCAL_FILE) as $(FILENAME)..."
-	curl -X PUT "$(API_ENDPOINT)/$(FILENAME)" \
-	-H "Authorization: Bearer $(IDTOKEN)" \
-	--data-binary "@$(LOCAL_FILE)"
-	@echo "Upload complete."
+	@echo "Uploading testfile.txt..."
+	curl -X PUT "https://c6j1000nq9.execute-api.us-east-1.amazonaws.com/test.txt" \
+	-H "Authorization: Bearer <IdToken>" \
+	--data-binary "@testfile.txt"
+
+# Response:
+# {"message":"File uploaded successfully."}
 
 # ----------------------------
 # Download a File (GET)
 # ----------------------------
-# Usage: make download
+# Usage:
+#   Generate a pre-signed URL and download the file
+# Requirements:
+#   - Replace <API_ENDPOINT> with your API endpoint
+#   - Replace <filename> with the S3 object name
+#   - Replace <localfile> with the local filename to save
 download:
-	@echo "Downloading $(FILENAME) to $(DOWNLOADED_FILE)..."
-	curl -X GET "$(API_ENDPOINT)/$(FILENAME)" \
-	-H "Authorization: Bearer $(IDTOKEN)" \
-	-o "$(DOWNLOADED_FILE)"
-	@echo "Download complete."
+	@echo "Downloading test.txt..."
+	curl -X GET "https://c6j1000nq9.execute-api.us-east-1.amazonaws.com/test.txt" \
+	-H "Authorization: Bearer <IdToken>" \
+	-o "downloaded_test.txt"
+
+# Notes:
+# - Files remain encrypted at rest in S3 until downloaded.
 
 # ----------------------------
 # Delete a File (DELETE)
 # ----------------------------
-# Usage: make delete
+# Usage:
+#   Delete a file from the S3 bucket
+# Requirements:
+#   - Replace <API_ENDPOINT> with your API endpoint
+#   - Replace <filename> with the S3 object name
+#   - Replace <IdToken> with your Cognito JWT token
 delete:
-	@echo "Deleting $(FILENAME)..."
-	curl -X DELETE "$(API_ENDPOINT)/$(FILENAME)" \
-	-H "Authorization: Bearer $(IDTOKEN)"
-	@echo "Delete complete."
+	@echo "Deleting test.txt..."
+	curl -X DELETE "https://c6j1000nq9.execute-api.us-east-1.amazonaws.com/test.txt" \
+	-H "Authorization: Bearer <IdToken>"
+
+# Notes:
+# - Only authenticated users with a valid JWT token can delete files.  sperate codes
