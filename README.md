@@ -47,7 +47,7 @@ A **secure serverless file sharing application** built entirely on AWS, designed
 ## Usage
 
 ### 1. Authenticate & Retrieve JWT Token
-
+this command returns an IdToken, which you will use to authorize API requests.
 ```bash
 aws cognito-idp initiate-auth \
   --auth-flow USER_PASSWORD_AUTH \
@@ -55,4 +55,4 @@ aws cognito-idp initiate-auth \
   --auth-parameters USERNAME=<your-username>,PASSWORD=<your-password> \
   --query "AuthenticationResult.IdToken" \
   --output text
-this command returns an IdToken, which you will use to authorize API requests.
+
