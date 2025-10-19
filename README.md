@@ -55,3 +55,4 @@ aws cognito-idp initiate-auth \
   --auth-parameters USERNAME=<your-username>,PASSWORD=<your-password> \
   --query "AuthenticationResult.IdToken" \
   --output text
+this command returns an IdToken, which you will use to authorize API requests.
