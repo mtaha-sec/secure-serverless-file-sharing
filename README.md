@@ -6,7 +6,7 @@ This is a **secure serverless file sharing application** built on AWS with a foc
 
 ---
 
-## 🔧 Built With
+##  Built With
 
 - **AWS S3** – Encrypted storage using KMS  
 - **AWS Lambda** – Serverless backend  
@@ -15,7 +15,7 @@ This is a **secure serverless file sharing application** built on AWS with a foc
 
 ---
 
-## 📂 AWS Resources
+## AWS Resources
 
 | Resource | Value |
 |----------|-------|
@@ -27,7 +27,7 @@ This is a **secure serverless file sharing application** built on AWS with a foc
 
 ---
 
-## 🚀 HTTP Methods
+##  HTTP Methods
 
 | Method | Action |
 |--------|--------|
@@ -37,7 +37,7 @@ This is a **secure serverless file sharing application** built on AWS with a foc
 
 ---
 
-## ⚙️ Usage
+##  Usage
 
 ### 1. Authenticate
 Get an IdToken from Cognito:
