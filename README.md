@@ -56,3 +56,59 @@ aws cognito-idp initiate-auth \
   --query "AuthenticationResult.IdToken" \
   --output text
 
+# =====================================================
+# Secure Serverless File Sharing - API Commands
+# =====================================================
+
+# ----------------------------
+# Upload a File (PUT)
+# ----------------------------
+# Usage:
+#   Upload a local file to the S3 bucket via API Gateway
+# Requirements:
+#   - Replace <API_ENDPOINT> with your API endpoint
+#   - Replace <filename> with the desired S3 object name
+#   - Replace <IdToken> with your Cognito JWT token
+upload:
+	@echo "Uploading testfile.txt..."
+	curl -X PUT "https://c6j1000nq9.execute-api.us-east-1.amazonaws.com/test.txt" \
+	-H "Authorization: Bearer <IdToken>" \
+	--data-binary "@testfile.txt"
+
+# Response:
+# {"message":"File uploaded successfully."}
+
+# ----------------------------
+# Download a File (GET)
+# ----------------------------
+# Usage:
+#   Generate a pre-signed URL and download the file
+# Requirements:
+#   - Replace <API_ENDPOINT> with your API endpoint
+#   - Replace <filename> with the S3 object name
+#   - Replace <localfile> with the local filename to save
+download:
+	@echo "Downloading test.txt..."
+	curl -X GET "https://c6j1000nq9.execute-api.us-east-1.amazonaws.com/test.txt" \
+	-H "Authorization: Bearer <IdToken>" \
+	-o "downloaded_test.txt"
+
+# Notes:
+# - Files remain encrypted at rest in S3 until downloaded.
+
+# ----------------------------
+# Delete a File (DELETE)
+# ----------------------------
+# Usage:
+#   Delete a file from the S3 bucket
+# Requirements:
+#   - Replace <API_ENDPOINT> with your API endpoint
+#   - Replace <filename> with the S3 object name
+#   - Replace <IdToken> with your Cognito JWT token
+delete:
+	@echo "Deleting test.txt..."
+	curl -X DELETE "https://c6j1000nq9.execute-api.us-east-1.amazonaws.com/test.txt" \
+	-H "Authorization: Bearer <IdToken>"
+
+# Notes:
+# - Only authenticated users with a valid JWT token can delete files.
