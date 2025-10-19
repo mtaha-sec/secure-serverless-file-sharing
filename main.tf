@@ -1,241 +1,169 @@
-# --------- VPC ---------
-resource "aws_vpc" "secure_vpc" {
-  cidr_block = var.vpc_cidr
-  enable_dns_support   = true
-  enable_dns_hostnames = true
+# ----------------------------
+# Random ID for bucket
+# ----------------------------
+resource "random_id" "bucket_id" {
+  byte_length = 4
+}
 
-  tags = {
-    Name = "secure-vpc"
+# ----------------------------
+# KMS Key for S3 encryption
+# ----------------------------
+resource "aws_kms_key" "s3_key" {
+  description             = "KMS key for S3 encryption"
+  deletion_window_in_days = 7
+}
+
+# ----------------------------
+# S3 Bucket
+# ----------------------------
+resource "aws_s3_bucket" "files_bucket" {
+  bucket        = "serverless-file-sharing-${random_id.bucket_id.hex}"
+  force_destroy = true
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "files_bucket_sse" {
+  bucket = aws_s3_bucket.files_bucket.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm     = "aws:kms"
+      kms_master_key_id = aws_kms_key.s3_key.id
+    }
   }
 }
 
-# --------- Public Subnets ---------
-resource "aws_subnet" "public" {
-  count             = length(var.public_subnet_cidrs)
-  vpc_id            = aws_vpc.secure_vpc.id
-  cidr_block        = var.public_subnet_cidrs[count.index]
-  availability_zone = element(["eu-north-1a", "eu-north-1b"], count.index)
-  map_public_ip_on_launch = true
-
-  tags = {
-    Name = "public-subnet-${count.index+1}"
-  }
+# ----------------------------
+# Cognito User Pool
+# ----------------------------
+resource "aws_cognito_user_pool" "user_pool" {
+  name                     = "${var.project_name}-users"
+  auto_verified_attributes = ["email"]
 }
 
-# --------- Private Subnets ---------
-resource "aws_subnet" "private" {
-  count             = length(var.private_subnet_cidrs)
-  vpc_id            = aws_vpc.secure_vpc.id
-  cidr_block        = var.private_subnet_cidrs[count.index]
-  availability_zone = element(["eu-north-1a", "eu-north-1b"], count.index)
-
-  tags = {
-    Name = "private-subnet-${count.index+1}"
-  }
+resource "aws_cognito_user_pool_client" "user_pool_client" {
+  name         = "${var.project_name}-client"
+  user_pool_id = aws_cognito_user_pool.user_pool.id
+  explicit_auth_flows = ["ALLOW_USER_PASSWORD_AUTH", "ALLOW_USER_SRP_AUTH", "ALLOW_REFRESH_TOKEN_AUTH"]
 }
 
-# --------- Internet Gateway ---------
-resource "aws_internet_gateway" "igw" {
-  vpc_id = aws_vpc.secure_vpc.id
-
-  tags = {
-    Name = "secure-igw"
-  }
-}
-
-# --------- NAT Gateway ---------
-# Allocate Elastic IP
-resource "aws_eip" "nat_eip" {
-  count = length(var.public_subnet_cidrs)
-}
-
-# NAT Gateways for each public subnet
-resource "aws_nat_gateway" "nat" {
-  count         = length(var.public_subnet_cidrs)
-  allocation_id = aws_eip.nat_eip[count.index].id
-  subnet_id     = aws_subnet.public[count.index].id
-
-  tags = {
-    Name = "nat-gateway-${count.index+1}"
-  }
-}
-
-# --------- Route Tables ---------
-
-# Public Route Table
-resource "aws_route_table" "public_rt" {
-  vpc_id = aws_vpc.secure_vpc.id
-
-  # Route all internet-bound traffic through the Internet Gateway
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.igw.id
-  }
-
-  tags = {
-    Name = "public-route-table"
-  }
-}
-
-# Private Route Tables (one per private subnet)
-resource "aws_route_table" "private_rt" {
-  count = length(var.private_subnet_cidrs)
-  vpc_id = aws_vpc.secure_vpc.id
-
-  # Route all outbound traffic through NAT Gateway
-  route {
-    cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = aws_nat_gateway.nat[count.index].id
-  }
-
-  tags = {
-    Name = "private-route-table-${count.index + 1}"
-  }
-}
-
-# --------- Route Table Associations ---------
-
-# Link each Public Subnet to the Public Route Table
-resource "aws_route_table_association" "public_assoc" {
-  count          = length(var.public_subnet_cidrs)
-  subnet_id      = aws_subnet.public[count.index].id
-  route_table_id = aws_route_table.public_rt.id
-}
-
-# Link each Private Subnet to its corresponding Private Route Table
-resource "aws_route_table_association" "private_assoc" {
-  count          = length(var.private_subnet_cidrs)
-  subnet_id      = aws_subnet.private[count.index].id
-  route_table_id = aws_route_table.private_rt[count.index].id
-}
-
-# -----------------------------
-# EC2 IAM Role
-# -----------------------------
-resource "aws_iam_role" "ec2_role" {
-  name = var.ec2_role_name
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Principal = {
-          Service = "ec2.amazonaws.com"
-        }
-        Action = "sts:AssumeRole"
-      }
-    ]
-  })
-
-  tags = {
-    Name = var.ec2_role_name
-  }
-}
-
-# -----------------------------
-# Attach Policies to Role
-# -----------------------------
-resource "aws_iam_role_policy_attachment" "ec2_role_policies" {
-  for_each = toset(var.ec2_role_policies)
-
-  role       = aws_iam_role.ec2_role.name
-  policy_arn = each.key
-}
-
-# -----------------------------
-# Instance Profile (for EC2)
-# -----------------------------
-resource "aws_iam_instance_profile" "ec2_instance_profile" {
-  name = "${var.ec2_role_name}-profile"
-  role = aws_iam_role.ec2_role.name
-}
-
-# -----------------------------
-# Lambda IAM Role
-# -----------------------------
+# ----------------------------
+# IAM Role for Lambda
+# ----------------------------
 resource "aws_iam_role" "lambda_role" {
-  name = var.lambda_role_name
-
-  # This defines *who can assume this role*
+  name = "${var.project_name}-lambda-role"
   assume_role_policy = jsonencode({
-    Version = "2012-10-17"
+    Version = "2012-10-17",
     Statement = [
       {
-        Effect = "Allow"
-        Principal = {
-          Service = "lambda.amazonaws.com"   # Lambda service will assume this role
-        }
         Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = { Service = "lambda.amazonaws.com" }
       }
     ]
   })
-
-  tags = {
-    Name = var.lambda_role_name
-  }
 }
-# Attach Managed Policies
-resource "aws_iam_role_policy_attachment" "lambda_role_policies" {
-  for_each = toset(var.lambda_role_policies)
+
+resource "aws_iam_role_policy_attachment" "lambda_basic_execution" {
   role       = aws_iam_role.lambda_role.name
-  policy_arn = each.key
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
-# -----------------------------
-# Custom Inline Policy for Security Actions
-# -----------------------------
-resource "aws_iam_role_policy" "lambda_security_policy" {
-  name = "lambda-security-actions"
-  role = aws_iam_role.lambda_role.id
-
+resource "aws_iam_policy" "lambda_s3_policy" {
+  name        = "${var.project_name}-s3-access"
+  description = "Lambda access to S3 bucket"
   policy = jsonencode({
-    Version = "2012-10-17"
+    Version = "2012-10-17",
     Statement = [
       {
-        Effect = "Allow"
-        Action = [
-          "iam:ListUsers",
-          "iam:UpdateLoginProfile",
-          "iam:DeactivateMFADevice"
-        ]
-        Resource = "*"
+        Action   = ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"]
+        Effect   = "Allow"
+        Resource = "${aws_s3_bucket.files_bucket.arn}/*"
+      },
+      {
+        Action   = ["kms:Decrypt", "kms:Encrypt", "kms:GenerateDataKey"]
+        Effect   = "Allow"
+        Resource = aws_kms_key.s3_key.arn
       }
     ]
   })
 }
-# -----------------------------
-# Logging / Security IAM Role
-# -----------------------------
-resource "aws_iam_role" "logging_role" {
-  name = var.logging_role_name   # variable for role name
 
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Principal = {
-          Service = [
-            "cloudtrail.amazonaws.com",
-            "config.amazonaws.com",
-            "securityhub.amazonaws.com"
-          ]
-        }
-        Action = "sts:AssumeRole"
-      }
-    ]
-  })
+resource "aws_iam_role_policy_attachment" "attach_lambda_s3_policy" {
+  role       = aws_iam_role.lambda_role.name
+  policy_arn = aws_iam_policy.lambda_s3_policy.arn
+}
 
-  tags = {
-    Name = var.logging_role_name
+# ----------------------------
+# Lambda Function
+# ----------------------------
+resource "aws_lambda_function" "file_handler" {
+  function_name    = "${var.project_name}-lambda"
+  role             = aws_iam_role.lambda_role.arn
+  handler          = var.lambda_handler
+  runtime          = var.lambda_runtime
+  filename         = "lambda/file_handler.zip"
+  source_code_hash = filebase64sha256("lambda/file_handler.zip")
+  environment {
+    variables = {
+      BUCKET_NAME = aws_s3_bucket.files_bucket.bucket
+    }
   }
 }
-# Attach managed policies
-resource "aws_iam_role_policy_attachment" "logging_role_policies" {
-  for_each = toset(var.logging_role_policies)  # list of managed policies
 
-  role       = aws_iam_role.logging_role.name
-  policy_arn = each.key
+# ----------------------------
+# API Gateway
+# ----------------------------
+resource "aws_apigatewayv2_api" "api" {
+  name          = "${var.project_name}-api"
+  protocol_type = "HTTP"
 }
 
+resource "aws_apigatewayv2_integration" "lambda_integration" {
+  api_id                 = aws_apigatewayv2_api.api.id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = aws_lambda_function.file_handler.arn
+  payload_format_version = "2.0"
+}
+
+# ----------------------------
+# Cognito JWT Authorizer (fixed issuer)
+# ----------------------------
+resource "aws_apigatewayv2_authorizer" "cognito" {
+  api_id           = aws_apigatewayv2_api.api.id
+  name             = "CognitoAuthorizer"
+  authorizer_type  = "JWT"
+  identity_sources = ["$request.header.Authorization"]
+
+  jwt_configuration {
+    audience = [aws_cognito_user_pool_client.user_pool_client.id]
+    issuer   = "https://cognito-idp.${var.aws_region}.amazonaws.com/${aws_cognito_user_pool.user_pool.id}"
+  }
+}
+
+# ----------------------------
+# API Gateway Route (protected)
+# ----------------------------
+resource "aws_apigatewayv2_route" "default_route" {
+  api_id             = aws_apigatewayv2_api.api.id
+  route_key          = "ANY /{proxy+}"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_lambda_permission" "api_gateway_permission" {
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.file_handler.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.api.execution_arn}/*/*"
+}
+
+# ----------------------------
+# API Gateway Deployment Stage
+# ----------------------------
+resource "aws_apigatewayv2_stage" "default" {
+  api_id      = aws_apigatewayv2_api.api.id
+  name        = "$default"
+  auto_deploy = true
+}

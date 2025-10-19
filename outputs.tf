@@ -1,19 +1,23 @@
-output "vpc_id" {
-  value = aws_vpc.secure_vpc.id
+# S3 Bucket Name
+output "s3_bucket_name" {
+  description = "Name of the S3 bucket storing files"
+  value       = aws_s3_bucket.files_bucket.bucket
 }
 
-output "public_subnet_ids" {
-  value = aws_subnet.public[*].id
+# Cognito User Pool ID
+output "cognito_user_pool_id" {
+  description = "ID of the Cognito User Pool"
+  value       = aws_cognito_user_pool.user_pool.id
 }
 
-output "private_subnet_ids" {
-  value = aws_subnet.private[*].id
+# Cognito User Pool Client ID
+output "cognito_client_id" {
+  description = "Client ID for the Cognito User Pool"
+  value       = aws_cognito_user_pool_client.user_pool_client.id
 }
 
-output "nat_gateway_ids" {
-  value = aws_nat_gateway.nat[*].id
-}
-
-output "internet_gateway_id" {
-  value = aws_internet_gateway.igw.id
+# API Gateway Endpoint
+output "api_endpoint" {
+  description = "HTTP API endpoint for Lambda function"
+  value       = aws_apigatewayv2_api.api.api_endpoint
 }
