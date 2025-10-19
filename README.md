@@ -2,45 +2,51 @@
 
 **Author:** Mohamed Taha Aboumehdi Hassani  
 
-This is a **secure serverless file sharing application** built on AWS with a focus on **security best practices**.  
+A **secure serverless file sharing application** built entirely on AWS, designed with **security best practices** in mind. This project demonstrates how to build a **fully serverless, encrypted, and authenticated file storage solution**.
 
 ---
 
-##  Built With
+## Built With
 
-- **AWS S3** – Encrypted storage using KMS  
-- **AWS Lambda** – Serverless backend  
-- **API Gateway** – HTTP API endpoints  
-- **Amazon Cognito** – JWT authentication & user management  
+- **AWS S3** – Encrypted storage with **AWS KMS (Key Management Service)** for **server-side encryption**, ensuring that all files are encrypted at rest.  
+- **AWS Lambda** – Serverless backend for handling file uploads, downloads, and deletions.  
+- **API Gateway (HTTP API)** – Secure, RESTful API endpoints for client communication.  
+- **Amazon Cognito** – JWT authentication and user management, protecting API access.  
+- **Terraform** – Infrastructure-as-Code for automated, reproducible deployment.  
 
 ---
 
 ## AWS Resources
 
-| Resource | Value |
-|----------|-------|
-| S3 Bucket | `serverless-file-sharing-1e014312` |
-| Lambda Function | `serverless-file-sharing-lambda` |
-| API Endpoint | `https://c6j1000nq9.execute-api.us-east-1.amazonaws.com` |
-| Cognito User Pool | `us-east-1_D4nqY2wmo` |
-| Cognito Client ID | `79stru2utq2fvrq38hlh84omnn` |
+| Resource | Value | Notes |
+|----------|-------|-------|
+| **S3 Bucket** | `serverless-file-sharing-1e014312` | **Server-side encrypted with KMS**, automatically managed by Lambda |
+| **Lambda Function** | `serverless-file-sharing-lambda` | Minimal IAM permissions (least privilege) |
+| **API Endpoint** | `https://c6j1000nq9.execute-api.us-east-1.amazonaws.com` | Protected by Cognito JWT Authorizer |
+| **Cognito User Pool** | `us-east-1_D4nqY2wmo` | Manages users and authentication |
+| **Cognito Client ID** | `79stru2utq2fvrq38hlh84omnn` | Used for authenticating clients via JWT |
 
 ---
 
-##  HTTP Methods
+## HTTP Methods & Actions
 
-| Method | Action |
-|--------|--------|
-| **PUT**    | Upload a file (requires JWT token) |
-| **GET**    | Generate a pre-signed URL for download |
-| **DELETE** | Delete a file (requires JWT token) |
+| Method | Description | Security |
+|--------|------------|----------|
+| **PUT**    | Upload a file to S3 | Requires a valid **Cognito JWT token** |
+| **GET**    | Generate a **pre-signed URL** for file download | Requires JWT token (optional: can be public if configured) |
+| **DELETE** | Delete a file from S3 | Requires a valid JWT token |
+
+> **Security Highlights:**  
+> - All files are **encrypted at rest** using **KMS-managed keys**.  
+> - **Lambda functions** follow the **least privilege principle**, only accessing the specific S3 bucket and KMS key.  
+> - **API Gateway** routes are protected by **Cognito JWT authorizer**.  
+> - Serverless architecture reduces exposure and attack surface.  
 
 ---
 
-##  Usage
+## Usage
 
-### 1. Authenticate
-Get an IdToken from Cognito:
+### 1. Authenticate & Retrieve JWT Token
 
 ```bash
 aws cognito-idp initiate-auth \
