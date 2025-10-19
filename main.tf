@@ -1,21 +1,19 @@
-# ----------------------------
+
 # Random ID for bucket
-# ----------------------------
+
 resource "random_id" "bucket_id" {
   byte_length = 4
 }
 
-# ----------------------------
 # KMS Key for S3 encryption
-# ----------------------------
+
 resource "aws_kms_key" "s3_key" {
   description             = "KMS key for S3 encryption"
   deletion_window_in_days = 7
 }
 
-# ----------------------------
 # S3 Bucket
-# ----------------------------
+
 resource "aws_s3_bucket" "files_bucket" {
   bucket        = "serverless-file-sharing-${random_id.bucket_id.hex}"
   force_destroy = true
@@ -32,9 +30,8 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "files_bucket_sse"
   }
 }
 
-# ----------------------------
+
 # Cognito User Pool
-# ----------------------------
 resource "aws_cognito_user_pool" "user_pool" {
   name                     = "${var.project_name}-users"
   auto_verified_attributes = ["email"]
@@ -46,9 +43,9 @@ resource "aws_cognito_user_pool_client" "user_pool_client" {
   explicit_auth_flows = ["ALLOW_USER_PASSWORD_AUTH", "ALLOW_USER_SRP_AUTH", "ALLOW_REFRESH_TOKEN_AUTH"]
 }
 
-# ----------------------------
+
 # IAM Role for Lambda
-# ----------------------------
+
 resource "aws_iam_role" "lambda_role" {
   name = "${var.project_name}-lambda-role"
   assume_role_policy = jsonencode({
@@ -93,9 +90,8 @@ resource "aws_iam_role_policy_attachment" "attach_lambda_s3_policy" {
   policy_arn = aws_iam_policy.lambda_s3_policy.arn
 }
 
-# ----------------------------
+
 # Lambda Function
-# ----------------------------
 resource "aws_lambda_function" "file_handler" {
   function_name    = "${var.project_name}-lambda"
   role             = aws_iam_role.lambda_role.arn
@@ -110,9 +106,9 @@ resource "aws_lambda_function" "file_handler" {
   }
 }
 
-# ----------------------------
+
 # API Gateway
-# ----------------------------
+
 resource "aws_apigatewayv2_api" "api" {
   name          = "${var.project_name}-api"
   protocol_type = "HTTP"
@@ -125,9 +121,8 @@ resource "aws_apigatewayv2_integration" "lambda_integration" {
   payload_format_version = "2.0"
 }
 
-# ----------------------------
 # Cognito JWT Authorizer (fixed issuer)
-# ----------------------------
+
 resource "aws_apigatewayv2_authorizer" "cognito" {
   api_id           = aws_apigatewayv2_api.api.id
   name             = "CognitoAuthorizer"
@@ -140,9 +135,8 @@ resource "aws_apigatewayv2_authorizer" "cognito" {
   }
 }
 
-# ----------------------------
 # API Gateway Route (protected)
-# ----------------------------
+
 resource "aws_apigatewayv2_route" "default_route" {
   api_id             = aws_apigatewayv2_api.api.id
   route_key          = "ANY /{proxy+}"
@@ -159,9 +153,8 @@ resource "aws_lambda_permission" "api_gateway_permission" {
   source_arn    = "${aws_apigatewayv2_api.api.execution_arn}/*/*"
 }
 
-# ----------------------------
 # API Gateway Deployment Stage
-# ----------------------------
+
 resource "aws_apigatewayv2_stage" "default" {
   api_id      = aws_apigatewayv2_api.api.id
   name        = "$default"
