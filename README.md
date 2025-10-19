@@ -56,13 +56,11 @@ aws cognito-idp initiate-auth \
   --query "AuthenticationResult.IdToken" \
   --output text
 
-# =====================================================
-# Secure Serverless File Sharing - API Commands
-# =====================================================
 
-# ----------------------------
+# Secure Serverless File Sharing - API Commands
+
 # Upload a File (PUT)
-# ----------------------------
+
 # Usage:
 #   Upload a local file to the S3 bucket via API Gateway
 # Requirements:
@@ -78,9 +76,8 @@ upload:
 # Response:
 # {"message":"File uploaded successfully."}
 
-# ----------------------------
 # Download a File (GET)
-# ----------------------------
+
 # Usage:
 #   Generate a pre-signed URL and download the file
 # Requirements:
@@ -96,9 +93,9 @@ download:
 # Notes:
 # - Files remain encrypted at rest in S3 until downloaded.
 
-# ----------------------------
+-
 # Delete a File (DELETE)
-# ----------------------------
+
 # Usage:
 #   Delete a file from the S3 bucket
 # Requirements:
