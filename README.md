@@ -61,8 +61,6 @@ aws cognito-idp initiate-auth \
 # Secure Serverless File Sharing - API Commands
 
 # Upload a File (PUT)
-
-	@echo "Uploading testfile.txt..."
 	curl -X PUT "https://c6j1000nq9.execute-api.us-east-1.amazonaws.com/test.txt" \
 	-H "Authorization: Bearer <IdToken>" \
 	--data-binary "@testfile.txt"
@@ -71,8 +69,6 @@ aws cognito-idp initiate-auth \
  {"message":"File uploaded successfully."}
 
 # Download a File (GET)
-
-	@echo "Downloading test.txt..."
 	curl -X GET "https://c6j1000nq9.execute-api.us-east-1.amazonaws.com/test.txt" \
 	-H "Authorization: Bearer <IdToken>" \
 	-o "downloaded_test.txt"
@@ -81,8 +77,6 @@ aws cognito-idp initiate-auth \
  - Files remain encrypted at rest in S3 until downloaded.
 
 # Delete a File (DELETE)
-
-	@echo "Deleting test.txt..."
 	curl -X DELETE "https://c6j1000nq9.execute-api.us-east-1.amazonaws.com/test.txt" \
 	-H "Authorization: Bearer <IdToken>"
 
