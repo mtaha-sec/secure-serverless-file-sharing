@@ -81,4 +81,4 @@ aws cognito-idp initiate-auth \
 	-H "Authorization: Bearer <IdToken>"
 
 # Notes:
- - Only authenticated users with a valid JWT token can delete files.  sperate codes
+ - Only authenticated users with a valid JWT token can delete files. 
